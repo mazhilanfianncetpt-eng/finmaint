@@ -2,7 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { getSnapshot, applyTheme } from './lib/store'
 import './styles.css'
+
+// Apply saved theme before first paint
+applyTheme(getSnapshot().theme)
 
 const router = createRouter({ routeTree })
 

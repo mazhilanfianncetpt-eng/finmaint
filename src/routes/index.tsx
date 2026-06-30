@@ -15,7 +15,7 @@ function LoginPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (currentUser(db)) navigate({ to: '/lender/' })
+    if (currentUser(db)) navigate({ to: '/lender' })
   }, [db, navigate])
 
   function fill(u: string, p: string) {
@@ -25,7 +25,7 @@ function LoginPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (login(username, password)) {
-      navigate({ to: '/lender/' })
+      navigate({ to: '/lender' })
     } else {
       setError('Invalid username or password')
     }
@@ -34,77 +34,84 @@ function LoginPage() {
   return (
     <PhoneFrame>
       <div className="flex flex-col h-full">
-        {/* Header brand */}
-        <div className="bg-[var(--color-primary-900)] px-6 pt-12 pb-10 shrink-0">
+        {/* Header */}
+        <div className="px-6 pt-12 pb-10 shrink-0" style={{ backgroundColor: 'var(--color-primary-900)' }}>
           <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-xl bg-[var(--color-gold-500)] flex items-center justify-center text-[var(--color-primary-950)] font-black text-sm">₹</div>
-            <span className="text-[var(--color-gold-300)] font-bold text-lg tracking-tight">FinMaint</span>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm" style={{ backgroundColor: 'var(--color-gold-500)', color: 'var(--color-primary-950)' }}>₹</div>
+            <span className="font-bold text-xl tracking-tight" style={{ color: 'var(--color-gold-300)' }}>Mazhilan Finance</span>
           </div>
           <h1 className="text-2xl font-bold text-white leading-tight">Loan Tracking<br />Made Simple</h1>
-          <p className="text-[var(--color-primary-300)] text-sm mt-2">Borrowers · Collectors · Ledger</p>
+          <p className="text-sm mt-2" style={{ color: 'var(--color-primary-300)' }}>Borrowers · Collectors · Ledger</p>
         </div>
 
-        {/* Form */}
+        {/* Form area */}
         <div className="flex-1 px-6 py-8 flex flex-col gap-6">
           {/* Quick fill chips */}
           <div>
-            <p className="text-xs text-[var(--color-muted)] mb-2 uppercase tracking-wider">Quick sign-in</p>
+            <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted)' }}>Quick sign-in</p>
             <div className="flex gap-2">
               <button
                 onClick={() => fill('admin', 'admin123')}
-                className="flex-1 py-2 rounded-xl border border-[var(--color-primary-700)] text-[var(--color-primary-400)] text-sm font-medium hover:bg-[var(--color-primary-950)] transition-fast"
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-fast"
+                style={{ border: '1px solid var(--color-primary-700)', color: 'var(--color-primary-500)', backgroundColor: 'transparent' }}
               >
-                Admin
+                <span className="text-[10px] uppercase tracking-wider block" style={{ color: 'var(--color-primary-600)' }}>Admin</span>
+                admin / admin123
               </button>
               <button
                 onClick={() => fill('collector', 'collector123')}
-                className="flex-1 py-2 rounded-xl border border-[var(--color-surface-600)] text-[var(--color-text-soft)] text-sm font-medium hover:bg-[var(--color-surface-800)] transition-fast"
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-fast"
+                style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-soft)', backgroundColor: 'transparent' }}
               >
-                Collector
+                <span className="text-[10px] uppercase tracking-wider block" style={{ color: 'var(--color-gold-500)' }}>Collector</span>
+                collector / collector123
               </button>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-soft)] mb-1.5">Username</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={e => { setUsername(e.target.value); setError('') }}
                 placeholder="admin"
                 autoComplete="username"
-                className="w-full bg-[var(--color-surface-800)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary-600)] transition-fast"
+                className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-fast"
+                style={{ backgroundColor: 'var(--color-surface-800)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-soft)] mb-1.5">Password</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => { setPassword(e.target.value); setError('') }}
                 placeholder="••••••••"
                 autoComplete="current-password"
-                className="w-full bg-[var(--color-surface-800)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-primary-600)] transition-fast"
+                className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none transition-fast"
+                style={{ backgroundColor: 'var(--color-surface-800)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
               />
             </div>
 
             {error && (
-              <p className="text-[var(--color-danger-400)] text-sm bg-red-950/50 border border-red-800 rounded-xl px-3 py-2">
+              <p className="text-sm rounded-xl px-3 py-2" style={{ color: '#f87171', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
                 {error}
               </p>
             )}
 
             <button
               type="submit"
-              className="w-full bg-[var(--color-primary-700)] hover:bg-[var(--color-primary-600)] text-white font-semibold py-3 rounded-xl transition-fast mt-1"
+              className="w-full font-semibold py-3 rounded-xl transition-fast mt-1 text-white"
+              style={{ backgroundColor: 'var(--color-primary-700)' }}
             >
               Sign In
             </button>
           </form>
 
-          <div className="mt-auto pt-4 border-t border-[var(--color-border)]">
-            <p className="text-xs text-center text-[var(--color-muted)]">FinMaint v1.0 · Local storage only</p>
+          <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+            <p className="text-xs text-center" style={{ color: 'var(--color-muted)' }}>FinMaint v1.0 · Single device · Two seeded logins</p>
           </div>
         </div>
       </div>

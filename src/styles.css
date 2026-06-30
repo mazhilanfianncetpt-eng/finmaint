@@ -20,7 +20,22 @@
   --color-gold-500: #f59e0b;
   --color-gold-600: #d97706;
 
-  /* Neutral darks (slate-leaning warm) */
+  /* Danger */
+  --color-danger-500: #ef4444;
+  --color-danger-400: #f87171;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+  --radius-card: 1rem;
+  --radius-btn: 0.625rem;
+  --radius-chip: 999px;
+  --shadow-card: 0 2px 12px 0 rgba(0,0,0,0.45);
+}
+
+/* ── DARK MODE (default) ─────────────────────────────────────── */
+:root {
   --color-surface-950: #0a0f0d;
   --color-surface-900: #111714;
   --color-surface-800: #1a2320;
@@ -31,30 +46,44 @@
   --color-surface-300: #8aaa9c;
   --color-surface-200: #b8cfc7;
   --color-surface-100: #ddeae5;
-  --color-surface-50: #f0f7f3;
+  --color-surface-50:  #f0f7f3;
 
-  /* Semantic */
-  --color-bg: var(--color-surface-950);
-  --color-card: var(--color-surface-900);
-  --color-card-hover: var(--color-surface-800);
-  --color-border: var(--color-surface-700);
-  --color-muted: var(--color-surface-400);
-  --color-text: var(--color-surface-50);
-  --color-text-soft: var(--color-surface-200);
+  --color-bg:        #0a0f0d;
+  --color-card:      #111714;
+  --color-card-hover:#1a2320;
+  --color-border:    #243028;
+  --color-muted:     #5c7268;
+  --color-text:      #f0f7f3;
+  --color-text-soft: #b8cfc7;
 
-  --color-danger-500: #ef4444;
-  --color-danger-400: #f87171;
-  --color-warning-400: #fbbf24;
-  --color-warning-500: #f59e0b;
+  --phone-shell-bg:  #1a2320;
+  --phone-shell-border: #2f3d35;
+}
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
+/* ── LIGHT MODE ──────────────────────────────────────────────── */
+:root.light {
+  --color-surface-950: #f0f7f3;
+  --color-surface-900: #ffffff;
+  --color-surface-800: #f4faf7;
+  --color-surface-700: #e2ede8;
+  --color-surface-600: #c6d9d0;
+  --color-surface-500: #8aaa9c;
+  --color-surface-400: #5c7268;
+  --color-surface-300: #415248;
+  --color-surface-200: #2f3d35;
+  --color-surface-100: #1a2320;
+  --color-surface-50:  #0a0f0d;
 
-  --radius-card: 1rem;
-  --radius-btn: 0.625rem;
-  --radius-chip: 999px;
+  --color-bg:        #edf5f0;
+  --color-card:      #ffffff;
+  --color-card-hover:#f4faf7;
+  --color-border:    #d4e6dd;
+  --color-muted:     #7a9e8e;
+  --color-text:      #0d1f18;
+  --color-text-soft: #2f4a3c;
 
-  --shadow-card: 0 2px 12px 0 rgba(0,0,0,0.45);
+  --phone-shell-bg:   #dceee5;
+  --phone-shell-border: #b8d4c6;
 }
 
 /* Base reset */
@@ -66,10 +95,11 @@ body {
   font-family: var(--font-sans);
   min-height: 100%;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 #root { min-height: 100dvh; }
 
-/* Tabular numerals for financial figures */
+/* Tabular numerals */
 .num { font-variant-numeric: tabular-nums; }
 
 /* Scrollbars */
@@ -77,11 +107,12 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-surface-600); border-radius: 4px; }
 
-/* Phone frame host */
+/* Phone frame */
 .phone-shell {
-  background: var(--color-surface-800);
-  border: 2px solid var(--color-surface-600);
-  box-shadow: 0 32px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+  background: var(--phone-shell-bg);
+  border: 2px solid var(--phone-shell-border);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 /* Custom checkbox */
@@ -95,3 +126,17 @@ input[type="checkbox"]:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* Smooth transitions */
 .transition-fast { transition: all 0.15s ease; }
+
+/* Theme transition for cards/borders */
+.bg-\[var\(--color-card\)\],
+.border-\[var\(--color-border\)\] {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Remove number input spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }

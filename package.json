@@ -23,5 +23,18 @@
     "@tailwindcss/vite": "^4.1.8",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
-  }
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Andrew2712/finmaint.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Andrew2712/finmaint/issues"
+  },
+  "homepage": "https://github.com/Andrew2712/finmaint#readme"
 }

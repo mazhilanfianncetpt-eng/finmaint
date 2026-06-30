@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useDBSnap, write } from '../lib/store'
-import { AppHeader } from '../components/ui'
+import { AppHeader, ConfirmDialog } from '../components/ui'
 import { paymentHistory, nextDueDate, overdueCount } from '../lib/logic'
 import { inr, fmtDate, todayISO } from '../lib/format'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Trash2 } from 'lucide-react'
 
 export const Route = createFileRoute('/lender/borrower/$id')({
   component: BorrowerHistoryPage,
@@ -12,14 +13,16 @@ export const Route = createFileRoute('/lender/borrower/$id')({
 function BorrowerHistoryPage() {
   const { id } = Route.useParams()
   const db = useDBSnap()
+  const navigate = useNavigate()
   const b = db.borrowers.find(b => b.id === id)
   const today = todayISO()
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (!b) {
     return (
       <div className="px-4 py-8 text-center">
-        <p className="text-[var(--color-muted)]">Borrower not found.</p>
-        <Link to="/lender/borrowers" className="text-[var(--color-primary-400)] text-sm mt-2 inline-block">← Back</Link>
+        <p style={{ color: 'var(--color-muted)' }}>Borrower not found.</p>
+        <Link to="/lender/borrowers" className="text-sm mt-2 inline-block" style={{ color: 'var(--color-primary-500)' }}>← Back</Link>
       </div>
     )
   }
@@ -44,77 +47,113 @@ function BorrowerHistoryPage() {
     }))
   }
 
+  function handleDelete() {
+    write(d => ({ ...d, borrowers: d.borrowers.filter(bw => bw.id !== id) }))
+    navigate({ to: '/lender/borrowers' })
+  }
+
   return (
-    <div className="flex flex-col">
-      <AppHeader title={b.name} subtitle={b.shopName} />
+    <div className="flex flex-col relative">
+      <AppHeader title={b.name} subtitle={`${b.shopName}${zone ? ' · ' + zone.name : ''}`} />
 
       <div className="px-4 py-4 flex flex-col gap-4">
-        {/* Back link */}
-        <Link to="/lender/borrowers" className="inline-flex items-center gap-1 text-xs text-[var(--color-primary-400)] hover:text-[var(--color-primary-300)]">
-          <ChevronLeft size={12} /> All Borrowers
-        </Link>
+        {/* Back + Delete row */}
+        <div className="flex items-center justify-between">
+          <Link
+            to="/lender/borrowers"
+            className="inline-flex items-center gap-1 text-xs transition-fast"
+            style={{ color: 'var(--color-primary-500)' }}
+          >
+            <ChevronLeft size={12} /> All Borrowers
+          </Link>
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-fast"
+            style={{ color: '#ef4444', border: '1px solid #ef444440', backgroundColor: '#ef444412' }}
+          >
+            <Trash2 size={13} /> Delete
+          </button>
+        </div>
 
-        {/* Info strip */}
-        <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="font-semibold text-[var(--color-text)]">{b.name}</p>
-              <p className="text-xs text-[var(--color-muted)]">{b.shopName} · {b.phone}</p>
-              {zone && <span className="text-[10px] bg-[var(--color-primary-900)] text-[var(--color-primary-300)] px-2 py-0.5 rounded-full mt-1 inline-block">{zone.name}</span>}
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-[var(--color-muted)]">Pay mode</p>
-              <p className="text-xs font-medium text-[var(--color-text)] capitalize">{b.payMode}</p>
-            </div>
+        {/* Stat strip */}
+        <div className="rounded-2xl p-1 grid grid-cols-3 gap-0" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          <div className="text-center p-3">
+            <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--color-muted)' }}>Total Payable</p>
+            <p className="text-base font-bold num mt-1" style={{ color: 'var(--color-text)' }}>{inr(b.totalPayable)}</p>
           </div>
-
-          {/* Stat strip */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div className="text-center">
-              <p className="text-[10px] text-[var(--color-muted)]">Total Payable</p>
-              <p className="text-sm font-bold num text-[var(--color-text)]">{inr(b.totalPayable)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[10px] text-[var(--color-muted)]">Paid So Far</p>
-              <p className="text-sm font-bold num text-[var(--color-primary-400)]">{inr(paidTotal)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[10px] text-[var(--color-muted)]">Remaining</p>
-              <p className="text-sm font-bold num text-[var(--color-gold-400)]">{inr(remaining)}</p>
-            </div>
+          <div className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--color-gold-500)', color: '#1a0a00' }}>
+            <p className="text-[10px] uppercase tracking-wider font-medium opacity-80">Paid So Far</p>
+            <p className="text-base font-bold num mt-1">{inr(paidTotal)}</p>
           </div>
-
-          {/* Progress */}
-          <div>
-            <div className="flex justify-between text-xs text-[var(--color-muted)] mb-1">
-              <span>{b.paidInstallments.length}/{b.dueCount} installments</span>
-              <span>{Math.round((b.paidInstallments.length / b.dueCount) * 100)}%</span>
-            </div>
-            <div className="h-1.5 bg-[var(--color-surface-700)] rounded-full">
-              <div className="h-1.5 bg-[var(--color-primary-500)] rounded-full" style={{ width: `${Math.round((b.paidInstallments.length / b.dueCount) * 100)}%` }} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs mt-3">
-            <div><span className="text-[var(--color-muted)]">Next due: </span><span className="text-[var(--color-text)]">{fmtDate(next)}</span></div>
-            <div><span className="text-[var(--color-muted)]">Frequency: </span><span className="text-[var(--color-text)] capitalize">{b.frequency}</span></div>
-            <div><span className="text-[var(--color-muted)]">Start: </span><span className="text-[var(--color-text)]">{fmtDate(b.startDate)}</span></div>
-            <div><span className="text-[var(--color-muted)]">End: </span><span className="text-[var(--color-text)]">{fmtDate(b.endDate)}</span></div>
-            {overdue > 0 && <div className="col-span-2"><span className="text-[var(--color-danger-400)] font-medium">{overdue} overdue installment{overdue > 1 ? 's' : ''}</span></div>}
+          <div className="text-center p-3 rounded-xl" style={{ backgroundColor: 'var(--color-primary-800)', color: '#fff' }}>
+            <p className="text-[10px] uppercase tracking-wider font-medium opacity-80">Remaining</p>
+            <p className="text-base font-bold num mt-1">{inr(remaining)}</p>
           </div>
         </div>
 
-        {/* Payment history table */}
+        {/* Info table */}
+        <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          {[
+            ['Phone', b.phone],
+            ['Address', b.address || zone?.name || '—'],
+            ['Frequency', b.frequency],
+            ['Start', fmtDate(b.startDate)],
+            ['End', fmtDate(b.endDate)],
+            ['Installment', inr(b.installmentAmount)],
+            ['Pay mode', b.payMode.toUpperCase()],
+            ['Issued cash', inr(b.amountPaidToBorrower)],
+          ].map(([label, value], i) => (
+            <div
+              key={label}
+              className="flex items-center justify-between px-4 py-2.5"
+              style={{
+                borderBottom: i < 7 ? '1px solid var(--color-border)' : 'none',
+              }}
+            >
+              <span className="text-sm" style={{ color: 'var(--color-primary-500)' }}>{label}</span>
+              <span className="text-sm font-medium num" style={{ color: 'var(--color-text)' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress */}
+        <div>
+          <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
+            <span>{b.paidInstallments.length}/{b.dueCount} installments</span>
+            <span>{Math.round((b.paidInstallments.length / b.dueCount) * 100)}%</span>
+          </div>
+          <div className="h-2 rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+            <div
+              className="h-2 rounded-full transition-all"
+              style={{ width: `${Math.round((b.paidInstallments.length / b.dueCount) * 100)}%`, backgroundColor: 'var(--color-primary-500)' }}
+            />
+          </div>
+          {overdue > 0 && (
+            <p className="text-xs mt-1 font-medium" style={{ color: 'var(--color-danger-400)' }}>
+              {overdue} overdue installment{overdue > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+
+        {/* Next due info */}
+        {next && (
+          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+            Next due: <span style={{ color: 'var(--color-text)' }}>{fmtDate(next)}</span>
+          </p>
+        )}
+
+        {/* Payment schedule table */}
         <section>
-          <p className="text-xs uppercase tracking-wider text-[var(--color-muted)] mb-2">Payment Schedule</p>
-          <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-2xl overflow-hidden">
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted)' }}>Payment Schedule</p>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--color-border)]">
-                  <th className="text-left px-3 py-2 text-[var(--color-muted)] font-medium">Date</th>
-                  <th className="text-center px-2 py-2 text-[var(--color-muted)] font-medium">Status</th>
-                  <th className="text-right px-3 py-2 text-[var(--color-muted)] font-medium">Amount</th>
-                  <th className="text-right px-3 py-2 text-[var(--color-muted)] font-medium">Balance</th>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface-800)' }}>
+                  <th className="text-left px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>#</th>
+                  <th className="text-left px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Date</th>
+                  <th className="text-center px-2 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Status</th>
+                  <th className="text-right px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Paid</th>
+                  <th className="text-right px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Balance</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,28 +166,35 @@ function BorrowerHistoryPage() {
                   return (
                     <tr
                       key={row.date}
-                      className={`border-b border-[var(--color-surface-800)] last:border-0 ${isToday ? 'bg-amber-950/20' : ''}`}
+                      style={{
+                        borderBottom: i < history.length - 1 ? '1px solid var(--color-border)' : 'none',
+                        backgroundColor: isToday ? 'rgba(245, 158, 11, 0.08)' : 'transparent',
+                      }}
                     >
-                      <td className="px-3 py-2">
-                        <span className="text-[var(--color-text-soft)]">{fmtDate(row.date)}</span>
-                        {isToday && <span className="ml-1 text-[10px] bg-amber-900/50 text-amber-400 px-1.5 py-0.5 rounded-full">Today</span>}
-                        {isOverdue && <span className="ml-1 text-[10px] bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded-full">Overdue</span>}
+                      <td className="px-3 py-2.5" style={{ color: 'var(--color-muted)' }}>{i + 1}</td>
+                      <td className="px-3 py-2.5">
+                        <span style={{ color: 'var(--color-text-soft)' }}>{fmtDate(row.date)}</span>
+                        {isToday && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(245,158,11,0.2)', color: '#f59e0b' }}>Today</span>
+                        )}
+                        {isOverdue && (
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171' }}>Overdue</span>
+                        )}
                       </td>
-                      <td className="text-center px-2 py-2">
+                      <td className="text-center px-2 py-2.5">
                         <input
                           type="checkbox"
                           checked={row.paid}
-                          disabled={!isToday}
                           onChange={() => togglePaid(row.date, row.paid)}
                         />
                       </td>
-                      <td className="text-right px-3 py-2 num">
-                        <span className={row.paid ? 'text-[var(--color-primary-400)]' : isFuture ? 'text-[var(--color-muted)]' : 'text-[var(--color-danger-400)]'}>
-                          {inr(b.installmentAmount)}
+                      <td className="text-right px-3 py-2.5 num">
+                        <span style={{ color: row.paid ? 'var(--color-primary-500)' : isFuture ? 'var(--color-muted)' : 'var(--color-danger-400)' }}>
+                          {row.paid ? inr(row.amountPaid) : '—'}
                         </span>
                       </td>
-                      <td className="text-right px-3 py-2 num">
-                        <span className={row.balance === 0 ? 'text-[var(--color-primary-400)]' : 'text-[var(--color-text-soft)]'}>
+                      <td className="text-right px-3 py-2.5 num">
+                        <span style={{ color: row.balance === 0 ? 'var(--color-primary-500)' : 'var(--color-text-soft)' }}>
                           {inr(row.balance)}
                         </span>
                       </td>
@@ -160,6 +206,18 @@ function BorrowerHistoryPage() {
           </div>
         </section>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete Borrower"
+        message={`Are you sure you want to delete "${b.name}"? This will permanently remove all their payment history.`}
+        confirmLabel="Yes, Delete"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

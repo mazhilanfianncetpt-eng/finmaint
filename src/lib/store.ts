@@ -1,6 +1,7 @@
 export type Role = 'admin' | 'collector'
 export type PayMode = 'cash' | 'upi' | 'bank' | 'online'
 export type Frequency = 'daily' | 'weekly'
+export type Theme = 'dark' | 'light'
 
 export interface User {
   id: string
@@ -26,12 +27,12 @@ export interface Borrower {
   amountPaidToBorrower: number
   totalPayable: number
   frequency: Frequency
-  startDate: string // ISO
+  startDate: string
   dueCount: number
-  endDate: string // ISO
+  endDate: string
   payMode: PayMode
   installmentAmount: number
-  paidInstallments: string[] // ISO dates
+  paidInstallments: string[]
 }
 
 export interface Investor {
@@ -46,7 +47,7 @@ export interface Investor {
 
 export interface Settings {
   initialOpeningBalance: number
-  initialOpeningDate: string // ISO
+  initialOpeningDate: string
   zones: Zone[]
 }
 
@@ -56,6 +57,7 @@ export interface DB {
   investors: Investor[]
   settings: Settings
   session: { userId: string } | null
+  theme: Theme
 }
 
 const KEY = 'finmaint.db.v3'
@@ -75,19 +77,18 @@ const DEFAULT_DB: DB = {
     zones: [],
   },
   session: null,
+  theme: 'dark',
 }
 
 function migrate(db: DB): DB {
-  // Ensure zones exist
   if (!db.settings.zones) db.settings.zones = []
-  // Ensure zoneId on borrowers
+  if (!db.theme) db.theme = 'dark'
   db.borrowers = (db.borrowers || []).map(b => ({
     ...b,
     zoneId: b.zoneId ?? null,
     paidInstallments: b.paidInstallments || [],
     amountPaidToBorrower: b.amountPaidToBorrower ?? b.amount,
   }))
-  // Ensure seed users always present
   for (const seed of SEED_USERS) {
     if (!db.users.find(u => u.id === seed.id)) db.users.unshift(seed)
   }
@@ -130,7 +131,6 @@ export function useDBSnap(): DB {
   return useSyncExternalStore(subscribe, getSnapshot)
 }
 
-// Auth helpers
 export function login(username: string, password: string): boolean {
   const db = getSnapshot()
   const user = db.users.find(u => u.username === username && u.password === password)
@@ -146,4 +146,20 @@ export function logout() {
 export function currentUser(db: DB): User | null {
   if (!db.session) return null
   return db.users.find(u => u.id === db.session!.userId) ?? null
+}
+
+export function toggleTheme() {
+  write(d => {
+    const next: Theme = d.theme === 'dark' ? 'light' : 'dark'
+    applyTheme(next)
+    return { ...d, theme: next }
+  })
+}
+
+export function applyTheme(theme: Theme) {
+  if (theme === 'light') {
+    document.documentElement.classList.add('light')
+  } else {
+    document.documentElement.classList.remove('light')
+  }
 }
