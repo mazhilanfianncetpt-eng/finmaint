@@ -2,11 +2,12 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
-import { getSnapshot, applyTheme } from './lib/store'
+import { getSnapshot, applyTheme, init } from './lib/store'  // 👈 add init
 import './styles.css'
 
-// Apply saved theme before first paint
 applyTheme(getSnapshot().theme)
+
+init()  // 👈 add this — bootstraps auth + loads data
 
 const router = createRouter({ routeTree })
 

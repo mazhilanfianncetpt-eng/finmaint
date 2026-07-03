@@ -63,28 +63,24 @@ function LoginPage() {
           {/* Header */}
           <div
             className="px-6 pt-10 pb-8"
-            style={{ background: 'linear-gradient(135deg, var(--color-primary-800) 0%, var(--color-primary-950) 100%)' }}
+            style={{ background: '#000000' }}
           >
-            <div className="inline-flex items-center gap-2.5 mb-5">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-base"
-                style={{ backgroundColor: 'var(--color-gold-500)', color: 'var(--color-primary-950)' }}
-              >
-                ₹
-              </div>
+            {/* Centered logo */}
+            <div className="flex flex-col items-center text-center mb-5">
+              <img
+                src="/logo.png"
+                alt="Mazhilan Finance"
+                className="h-65 w-60 rounded-2xl object-cover mb-3"
+                style={{ mixBlendMode: 'lighten' }}
+              />
               <span
                 className="font-bold text-xl tracking-tight"
                 style={{ color: 'var(--color-gold-300)' }}
               >
-                Mazhilan Finance
+        
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-white leading-tight">
-              Loan Tracking<br />Made Simple
-            </h1>
-            <p className="text-sm mt-2" style={{ color: 'var(--color-primary-300)' }}>
-              Borrowers · Collectors · Ledger
-            </p>
+
           </div>
 
           {/* Form area */}
