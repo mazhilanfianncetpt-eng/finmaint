@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useDBSnap, currentUser, write } from '../lib/store'
+import { useDBSnap, currentUser, addZone as apiAddZone, updateZone, deleteZone as apiDeleteZone } from '../lib/store'
 import { AppHeader, Label, Input, Btn, Empty, PageHeader } from '../components/ui'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 
@@ -19,46 +19,39 @@ function ZonesPage() {
   const [editName, setEditName] = useState('')
   const [error, setError]       = useState('')
 
-  function addZone() {
+  async function addZone() {
     const n = newName.trim()
     if (!n) { setError('Zone name is required.'); return }
     if (zones.find(z => z.name.toLowerCase() === n.toLowerCase())) {
       setError('Zone already exists.')
       return
     }
-    write(d => ({
-      ...d,
-      settings: {
-        ...d.settings,
-        zones: [...d.settings.zones, { id: `z_${Date.now()}`, name: n }],
-      },
-    }))
-    setNewName('')
-    setError('')
+    try {
+      await apiAddZone(n)
+      setNewName('')
+      setError('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add zone.')
+    }
   }
 
-  function saveEdit(id: string) {
+  async function saveEdit(id: string) {
     const n = editName.trim()
     if (!n) return
-    write(d => ({
-      ...d,
-      settings: {
-        ...d.settings,
-        zones: d.settings.zones.map(z => z.id === id ? { ...z, name: n } : z),
-      },
-    }))
-    setEditId(null)
+    try {
+      await updateZone(id, n)
+      setEditId(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update zone.')
+    }
   }
 
-  function deleteZone(id: string) {
-    write(d => ({
-      ...d,
-      settings: {
-        ...d.settings,
-        zones: d.settings.zones.filter(z => z.id !== id),
-      },
-      borrowers: d.borrowers.map(b => b.zoneId === id ? { ...b, zoneId: null } : b),
-    }))
+  async function deleteZone(id: string) {
+    try {
+      await apiDeleteZone(id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete zone.')
+    }
   }
 
   const borrowerCount = (zoneId: string) =>

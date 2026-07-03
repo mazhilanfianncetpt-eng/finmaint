@@ -13,10 +13,11 @@ function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const isDark = db.theme === 'dark'
 
   useEffect(() => {
-    if (currentUser(db)) navigate({ to: '/lender' })
+    if (db.authChecked && currentUser(db)) navigate({ to: '/lender' })
   }, [db, navigate])
 
   function fill(u: string, p: string) {
@@ -25,9 +26,13 @@ function LoginPage() {
     setError('')
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (login(username, password)) {
+    setError('')
+    setSubmitting(true)
+    const ok = await login(username, password)
+    setSubmitting(false)
+    if (ok) {
       navigate({ to: '/lender' })
     } else {
       setError('Invalid username or password')
@@ -196,10 +201,11 @@ function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full font-semibold py-3 rounded-xl transition-fast mt-1 text-white"
+                disabled={submitting}
+                className="w-full font-semibold py-3 rounded-xl transition-fast mt-1 text-white disabled:opacity-60"
                 style={{ backgroundColor: 'var(--color-primary-700)' }}
               >
-                Sign In
+                {submitting ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
 

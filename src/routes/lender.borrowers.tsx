@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useCallback } from 'react'
-import { useDBSnap, write } from '../lib/store'
+import { useDBSnap, addBorrower } from '../lib/store'
 import type { PayMode, Frequency } from '../lib/store'
 import { AppHeader, Sheet, Label, Input, Select, Btn, ZoneLink, Empty, PageHeader } from '../components/ui'
 import { nextDueDate, overdueCount, calcEndDate } from '../lib/logic'
@@ -254,16 +254,14 @@ function AddBorrowerForm({ onClose }: { onClose: () => void }) {
     setUserEditedPaid(true)
   }, [])
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!name.trim() || !amount || !dueCount) {
       setError('Name, amount, and number of installments are required.')
       return
     }
     const paidNum = parseFloat(amountPaidToBorrower) || autoIssuedCash
-    write(d => ({
-      ...d,
-      borrowers: [...d.borrowers, {
-        id: `b_${Date.now()}`,
+    try {
+      await addBorrower({
         name: name.trim(),
         shopName: shopName.trim(),
         address: address.trim(),
@@ -279,9 +277,11 @@ function AddBorrowerForm({ onClose }: { onClose: () => void }) {
         payMode,
         installmentAmount,
         paidInstallments: [],
-      }],
-    }))
-    onClose()
+      })
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add borrower.')
+    }
   }
 
   const fieldStyle: React.CSSProperties = {

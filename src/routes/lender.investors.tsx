@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useDBSnap, write } from '../lib/store'
+import { useDBSnap, addInvestor, updateInvestor } from '../lib/store'
 import type { PayMode } from '../lib/store'
 import { AppHeader, Sheet, Label, Input, Select, Btn, Empty, PageHeader } from '../components/ui'
 import { inr, fmtDate, todayISO } from '../lib/format'
@@ -20,17 +20,11 @@ function InvestorsPage() {
   const totalWithdrawn = withdrawn.reduce((s, i) => s + i.amount, 0)
 
   function handleWithdraw(id: string) {
-    write(d => ({
-      ...d,
-      investors: d.investors.map(i => i.id === id ? { ...i, withdrawnOn: todayISO() } : i),
-    }))
+    updateInvestor(id, { withdrawnOn: todayISO() }).catch(() => {})
   }
 
   function handleUnwithdraw(id: string) {
-    write(d => ({
-      ...d,
-      investors: d.investors.map(i => i.id === id ? { ...i, withdrawnOn: null } : i),
-    }))
+    updateInvestor(id, { withdrawnOn: null }).catch(() => {})
   }
 
   return (
@@ -218,7 +212,7 @@ function AddInvestorForm({ onClose }: { onClose: () => void }) {
   const [investedOn, setInvestedOn] = useState(todayISO())
   const [error, setError]         = useState('')
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!name.trim() || !amount) {
       setError('Name and amount are required.')
       return
@@ -228,22 +222,19 @@ function AddInvestorForm({ onClose }: { onClose: () => void }) {
       setError('Enter a valid amount.')
       return
     }
-    write(d => ({
-      ...d,
-      investors: [
-        ...d.investors,
-        {
-          id: `inv_${Date.now()}`,
-          name: name.trim(),
-          phone: phone.trim(),
-          amount: amountNum,
-          payMode,
-          investedOn,
-          withdrawnOn: null,
-        },
-      ],
-    }))
-    onClose()
+    try {
+      await addInvestor({
+        name: name.trim(),
+        phone: phone.trim(),
+        amount: amountNum,
+        payMode,
+        investedOn,
+        withdrawnOn: null,
+      })
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add investor.')
+    }
   }
 
   return (

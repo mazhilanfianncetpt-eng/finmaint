@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useDBSnap, currentUser, write } from '../lib/store'
+import { useDBSnap, currentUser, togglePayment, updateSettings } from '../lib/store'
 import { AppHeader, Sheet, Label, Input, Btn } from '../components/ui'
 import { ledgerFor, previewLedger, dueDatesFor } from '../lib/logic'
 import { inr, fmtDate, todayISO, addDays } from '../lib/format'
@@ -91,29 +91,13 @@ function CollectionPage() {
     })
 
   // Toggle paid for any borrower/date combo — no date restriction (multi check-in enabled)
-  function togglePaid(borrowerId: string, d: string, wasPaid: boolean) {
-    write(db => ({
-      ...db,
-      borrowers: db.borrowers.map(b => {
-        if (b.id !== borrowerId) return b
-        const paidInstallments = wasPaid
-          ? b.paidInstallments.filter(x => x !== d)
-          : [...b.paidInstallments, d]
-        return { ...b, paidInstallments }
-      }),
-    }))
+  function togglePaid(borrowerId: string, d: string, _wasPaid: boolean) {
+    togglePayment(borrowerId, d).catch(() => {})
   }
 
   // Check-in for one specific overdue date on a borrower (marks that installment as paid)
   function checkInOverdue(borrowerId: string, overdueDate: string) {
-    write(db => ({
-      ...db,
-      borrowers: db.borrowers.map(b => {
-        if (b.id !== borrowerId) return b
-        if (b.paidInstallments.includes(overdueDate)) return b
-        return { ...b, paidInstallments: [...b.paidInstallments, overdueDate] }
-      }),
-    }))
+    togglePayment(borrowerId, overdueDate).catch(() => {})
   }
 
   function handlePreview() {
@@ -123,10 +107,10 @@ function CollectionPage() {
     setObConfirm(false)
   }
 
-  function handleSaveOB() {
+  async function handleSaveOB() {
     const amount = parseFloat(obAmount)
     if (isNaN(amount)) return
-    write(d => ({ ...d, settings: { ...d.settings, initialOpeningBalance: amount, initialOpeningDate: obDate } }))
+    await updateSettings({ initialOpeningBalance: amount, initialOpeningDate: obDate }).catch(() => {})
     setShowBalance(false); setObPreview(null); setObConfirm(false)
   }
 

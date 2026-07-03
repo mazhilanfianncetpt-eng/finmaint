@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useDBSnap, write } from '../lib/store'
+import { useDBSnap, togglePayment, deleteBorrower } from '../lib/store'
 import { AppHeader, ConfirmDialog } from '../components/ui'
 import { paymentHistory, nextDueDate, overdueCount } from '../lib/logic'
 import { inr, fmtDate, todayISO } from '../lib/format'
@@ -43,21 +43,12 @@ function BorrowerHistoryPage() {
   const zone      = db.settings.zones.find(z => z.id === b.zoneId)
   const progress  = Math.round((b.paidInstallments.length / b.dueCount) * 100)
 
-  function togglePaid(date: string, wasPaid: boolean) {
-    write(d => ({
-      ...d,
-      borrowers: d.borrowers.map(bw => {
-        if (bw.id !== id) return bw
-        const paidInstallments = wasPaid
-          ? bw.paidInstallments.filter(x => x !== date)
-          : [...bw.paidInstallments, date]
-        return { ...bw, paidInstallments }
-      }),
-    }))
+  function togglePaid(date: string, _wasPaid: boolean) {
+    togglePayment(id, date).catch(() => {})
   }
 
-  function handleDelete() {
-    write(d => ({ ...d, borrowers: d.borrowers.filter(bw => bw.id !== id) }))
+  async function handleDelete() {
+    await deleteBorrower(id)
     navigate({ to: '/lender/borrowers' })
   }
 
