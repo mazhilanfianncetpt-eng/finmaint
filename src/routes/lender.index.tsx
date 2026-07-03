@@ -21,10 +21,10 @@ function Dashboard() {
 
   const zones = db.settings.zones
 
-  const totalInvested   = db.investors.filter(i => !i.withdrawnOn).reduce((s, i) => s + i.amount, 0)
-  const totalReceived   = db.borrowers.reduce((s, b) => s + b.paidInstallments.length * b.installmentAmount, 0)
-  const totalIssued     = db.borrowers.reduce((s, b) => s + b.amountPaidToBorrower, 0)
-  const activeBorrowers = db.borrowers.length
+  const totalInvested     = db.investors.filter(i => !i.withdrawnOn).reduce((s, i) => s + i.amount, 0)
+  const totalReceived     = db.borrowers.reduce((s, b) => s + b.paidInstallments.length * b.installmentAmount, 0)
+  const totalIssued       = db.borrowers.reduce((s, b) => s + b.amountPaidToBorrower, 0)
+  const activeBorrowers   = db.borrowers.length
   const totalYetToReceive = Math.max(0, totalIssued - totalReceived)
 
   const ledger = ledgerFor(db, date, zoneId)
@@ -32,7 +32,12 @@ function Dashboard() {
   const searchResults = search.trim()
     ? db.borrowers.filter(b => {
         const q = search.toLowerCase()
-        return b.name.toLowerCase().includes(q) || b.shopName.toLowerCase().includes(q) || b.phone.includes(q)
+        return (
+          b.name.toLowerCase().includes(q) ||
+          b.shopName.toLowerCase().includes(q) ||
+          b.phone.includes(q) ||
+          b.borrowerCode?.includes(q)
+        )
       })
     : []
   const selectedB   = selectedBId ? db.borrowers.find(b => b.id === selectedBId) : null
@@ -89,8 +94,8 @@ function Dashboard() {
               type="search"
               value={search}
               onChange={e => { setSearch(e.target.value); setSelectedBId(null) }}
-              placeholder="Name, shop, or phone"
-              aria-label="Search borrowers by name, shop, or phone"
+              placeholder="Name, shop, phone or ID"
+              aria-label="Search borrowers by name, shop, phone or ID"
               className="w-full rounded-xl pl-9 pr-8 py-2.5 text-sm focus:outline-none transition-fast"
               style={{ backgroundColor: 'var(--color-surface-800)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
             />
@@ -113,7 +118,22 @@ function Dashboard() {
                   aria-selected={selectedBId === b.id}
                 >
                   <div>
-                    <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{b.name}</p>
+                    <p className="text-sm font-medium flex items-center gap-1.5" style={{ color: 'var(--color-text)' }}>
+                      {b.borrowerCode && (
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                          style={{
+                            backgroundColor: 'var(--color-surface-700)',
+                            color: 'var(--color-primary-500)',
+                            fontFamily: 'monospace',
+                            border: '1px solid var(--color-border)',
+                          }}
+                        >
+                          #{b.borrowerCode}
+                        </span>
+                      )}
+                      {b.name}
+                    </p>
                     <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{b.shopName}</p>
                   </div>
                   <ChevronRight size={14} style={{ color: 'var(--color-muted)' }} aria-hidden="true" />
@@ -199,7 +219,22 @@ function Dashboard() {
                   style={{ backgroundColor: 'var(--color-card)', border: '1px solid rgba(16,185,129,0.2)' }}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>{b.name}</p>
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5" style={{ color: 'var(--color-text)' }}>
+                      {b.borrowerCode && (
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+                          style={{
+                            backgroundColor: 'var(--color-surface-700)',
+                            color: 'var(--color-primary-500)',
+                            fontFamily: 'monospace',
+                            border: '1px solid var(--color-border)',
+                          }}
+                        >
+                          #{b.borrowerCode}
+                        </span>
+                      )}
+                      {b.name}
+                    </p>
                     <p className="text-xs truncate" style={{ color: 'var(--color-muted)' }}>{b.shopName} · {b.phone}</p>
                   </div>
                   <span className="text-sm num font-bold shrink-0 ml-2" style={{ color: 'var(--color-primary-500)' }}>
@@ -224,7 +259,22 @@ function Dashboard() {
                   style={{ backgroundColor: 'var(--color-card)', border: '1px solid rgba(239,68,68,0.2)' }}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text)' }}>{b.name}</p>
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5" style={{ color: 'var(--color-text)' }}>
+                      {b.borrowerCode && (
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+                          style={{
+                            backgroundColor: 'var(--color-surface-700)',
+                            color: 'var(--color-primary-500)',
+                            fontFamily: 'monospace',
+                            border: '1px solid var(--color-border)',
+                          }}
+                        >
+                          #{b.borrowerCode}
+                        </span>
+                      )}
+                      {b.name}
+                    </p>
                     <p className="text-xs truncate" style={{ color: 'var(--color-muted)' }}>{b.shopName} · {b.phone}</p>
                   </div>
                   <span className="text-sm num font-bold shrink-0 ml-2" style={{ color: 'var(--color-danger-400)' }}>
@@ -248,13 +298,13 @@ const BorrowerStatusPanel = memo(function BorrowerStatusPanel({
   zones: DB['settings']['zones']
   onClose: () => void
 }) {
-  const history  = paymentHistory(b)
-  const paid     = b.paidInstallments.length
+  const history   = paymentHistory(b)
+  const paid      = b.paidInstallments.length
   const remaining = Math.max(0, b.amount - paid * b.installmentAmount)
-  const zone     = zones.find(z => z.id === b.zoneId)
-  const overdue  = overdueCount(b)
-  const next     = nextDueDate(b)
-  const progress = Math.round((paid / b.dueCount) * 100)
+  const zone      = zones.find(z => z.id === b.zoneId)
+  const overdue   = overdueCount(b)
+  const next      = nextDueDate(b)
+  const progress  = Math.round((paid / b.dueCount) * 100)
 
   return (
     <div
@@ -265,7 +315,22 @@ const BorrowerStatusPanel = memo(function BorrowerStatusPanel({
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{b.name}</p>
+          <p className="font-semibold flex items-center gap-1.5" style={{ color: 'var(--color-text)' }}>
+            {b.borrowerCode && (
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{
+                  backgroundColor: 'var(--color-surface-700)',
+                  color: 'var(--color-primary-500)',
+                  fontFamily: 'monospace',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                #{b.borrowerCode}
+              </span>
+            )}
+            {b.name}
+          </p>
           <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{b.shopName}{zone ? ` · ${zone.name}` : ''}</p>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-xl transition-fast" style={{ color: 'var(--color-muted)' }} aria-label="Close">

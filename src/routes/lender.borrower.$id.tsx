@@ -85,7 +85,15 @@ function BorrowerHistoryPage() {
 
         {/* Desktop title */}
         <div className="hidden md:block">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{b.name}</h1>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded-md"
+              style={{ backgroundColor: 'var(--color-surface-700)', color: 'var(--color-primary-500)', fontFamily: 'monospace', border: '1px solid var(--color-border)' }}
+            >
+              #{b.borrowerCode}
+            </span>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{b.name}</h1>
+          </div>
           <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
             {b.shopName}{zone ? ` · ${zone.name}` : ''}
           </p>
@@ -129,6 +137,7 @@ function BorrowerHistoryPage() {
         >
           {(
             [
+              ['Borrower ID',  `#${b.borrowerCode}`],
               ['Phone',        b.phone],
               ['Address',      b.address || zone?.name || '—'],
               ['Frequency',    b.frequency],

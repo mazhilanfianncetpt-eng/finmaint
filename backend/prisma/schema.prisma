@@ -43,6 +43,7 @@ model Zone {
 
 model Borrower {
   id                   String    @id @default(cuid())
+  borrowerCode         String    @unique
   name                 String
   shopName             String
   address              String

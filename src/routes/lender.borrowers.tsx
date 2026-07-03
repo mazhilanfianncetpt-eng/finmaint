@@ -18,7 +18,8 @@ function BorrowersPage() {
   const [showAdd, setShowAdd] = useState(false)
 
   const zones = db.settings.zones
-  const filtered = db.borrowers.filter(b => {
+  const filtered = db.borrowers
+  .filter(b => {
     if (zoneFilter && b.zoneId !== zoneFilter) return false
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -29,6 +30,11 @@ function BorrowersPage() {
       )
     }
     return true
+  })
+  .sort((a, b) => {
+    const aCode = parseInt(a.borrowerCode ?? '0')
+    const bCode = parseInt(b.borrowerCode ?? '0')
+    return aCode - bCode
   })
 
   return (
@@ -124,8 +130,16 @@ function BorrowersPage() {
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{b.name}</p>
-                      <p className="text-xs truncate" style={{ color: 'var(--color-muted)' }}>{b.shopName} · {b.phone}</p>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+                          style={{ backgroundColor: 'var(--color-surface-700)', color: 'var(--color-primary-500)', fontFamily: 'monospace', border: '1px solid var(--color-border)' }}
+                        >
+                          #{b.borrowerCode}
+                        </span>
+                        <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text)' }}>{b.name}</p>
+                      </div>
+                      <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-muted)' }}>{b.shopName} · {b.phone}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                       {zone && (

@@ -107,6 +107,7 @@ export interface ApiZone {
 
 export interface ApiBorrower {
   id: string
+  borrowerCode?: string
   name: string
   shopName: string
   address: string

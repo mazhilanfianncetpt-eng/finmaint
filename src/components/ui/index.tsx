@@ -7,8 +7,6 @@ import {
 import { logout, useDBSnap, currentUser, toggleTheme } from '../../lib/store'
 
 // ─── PhoneFrame ─────────────────────────────────────────────────────────────
-// On mobile: renders a phone-shell decorator.
-// On tablet/desktop: transparent full-width wrapper (CSS handles it).
 export function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -33,8 +31,7 @@ export function PhoneFrame({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ─── AppShell (tablet/desktop layout with sidebar) ────────────────────────────
-// Wraps the full authenticated app with sidebar + top bar.
+// ─── AppShell ────────────────────────────────────────────────────────────────
 interface AppShellProps {
   children: React.ReactNode
 }
@@ -57,10 +54,8 @@ export function AppShell({ children }: AppShellProps) {
   const isDark = db.theme === 'dark'
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Close mobile menu on route change
   useEffect(() => { setMobileOpen(false) }, [path])
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false) }
     document.addEventListener('keydown', handler)
@@ -181,7 +176,7 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Main content area */}
       <main className="app-main" id="main-content">
-        {/* Top bar (mobile only / secondary desktop) */}
+        {/* Top bar (mobile only) */}
         <div className="app-topbar flex items-center justify-between px-4 py-3 md:hidden">
           <div className="flex items-center gap-3">
             <button
@@ -258,22 +253,11 @@ export function AppShell({ children }: AppShellProps) {
 }
 
 // ─── AppHeader ────────────────────────────────────────────────────────────────
-// Used as a section header inside pages (title + optional subtitle).
-// On mobile shows logout/theme. On desktop those live in the sidebar.
+// Removed theme toggle and logout buttons — those live in AppShell topbar/sidebar.
 export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const navigate = useNavigate()
-  const db = useDBSnap()
-  const user = currentUser(db)
-  const isDark = db.theme === 'dark'
-
-  function handleLogout() {
-    logout()
-    navigate({ to: '/' })
-  }
-
   return (
     <header
-      className="flex items-center justify-between px-4 md:px-6 pt-4 pb-3 shrink-0"
+      className="flex items-center px-4 md:px-6 pt-4 pb-3 shrink-0"
       style={{ borderBottom: '1px solid var(--color-border)' }}
     >
       <div>
@@ -284,37 +268,11 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
           <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>{subtitle}</p>
         )}
       </div>
-      {/* These controls are only needed when NOT in AppShell (e.g. login page) */}
-      <div className="flex items-center gap-1 md:hidden">
-        {user && (
-          <span className="text-xs hidden sm:block mr-1" style={{ color: 'var(--color-muted)' }}>
-            {user.name}
-          </span>
-        )}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-xl transition-fast"
-          style={{ color: 'var(--color-muted)' }}
-          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDark ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-        <button
-          onClick={handleLogout}
-          className="p-2 rounded-xl transition-fast"
-          style={{ color: 'var(--color-muted)' }}
-          aria-label="Logout"
-        >
-          <LogOut size={16} />
-        </button>
-      </div>
     </header>
   )
 }
 
 // ─── BottomNav ────────────────────────────────────────────────────────────────
-// Kept for backward compatibility; AppShell renders the actual nav.
-// This is only used by the old lender.tsx layout wrapper.
 type BottomNavTo = '/lender' | '/lender/collection' | '/lender/borrowers' | '/lender/investors'
 
 const BOTTOM_NAV_ITEMS: { to: BottomNavTo; label: string; icon: React.ElementType }[] = [
@@ -363,9 +321,9 @@ export function StatCard({
   label: string; value: string; sub?: string; accent?: 'gold' | 'danger' | 'muted'
 }) {
   const valColor =
-    accent === 'gold'   ? 'var(--color-gold-400)'
-    : accent === 'danger' ? 'var(--color-danger-400)'
-    : accent === 'muted'  ? 'var(--color-muted)'
+    accent === 'gold'    ? 'var(--color-gold-400)'
+    : accent === 'danger'  ? 'var(--color-danger-400)'
+    : accent === 'muted'   ? 'var(--color-muted)'
     : 'var(--color-primary-500)'
 
   return (
@@ -373,10 +331,7 @@ export function StatCard({
       className="rounded-2xl p-3 flex flex-col gap-1 card"
       style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
     >
-      <span
-        className="text-[10px] uppercase tracking-wider font-medium"
-        style={{ color: 'var(--color-muted)' }}
-      >
+      <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: 'var(--color-muted)' }}>
         {label}
       </span>
       <span className="text-lg font-bold num leading-tight" style={{ color: valColor }}>
@@ -395,14 +350,12 @@ export function Sheet({
 }: {
   open: boolean; onClose: () => void; title: string; children: React.ReactNode
 }) {
-  // Prevent body scroll when open
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
     else document.body.style.overflow = ''
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -474,27 +427,15 @@ export function ConfirmDialog({
       aria-labelledby="confirm-title"
       aria-describedby="confirm-message"
     >
-      <div
-        className="absolute inset-0"
-        onClick={onCancel}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0" onClick={onCancel} aria-hidden="true" />
       <div
         className="relative rounded-2xl p-5 w-full max-w-sm shadow-2xl"
         style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
       >
-        <h3
-          id="confirm-title"
-          className="font-semibold text-base mb-1"
-          style={{ color: 'var(--color-text)' }}
-        >
+        <h3 id="confirm-title" className="font-semibold text-base mb-1" style={{ color: 'var(--color-text)' }}>
           {title}
         </h3>
-        <p
-          id="confirm-message"
-          className="text-sm mb-5"
-          style={{ color: 'var(--color-muted)' }}
-        >
+        <p id="confirm-message" className="text-sm mb-5" style={{ color: 'var(--color-muted)' }}>
           {message}
         </p>
         <div className="flex gap-2">
@@ -513,10 +454,7 @@ export function ConfirmDialog({
 // ─── Form primitives ──────────────────────────────────────────────────────────
 export function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label
-      className="block text-xs font-medium mb-1.5"
-      style={{ color: 'var(--color-text-soft)' }}
-    >
+    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>
       {children}
     </label>
   )
@@ -609,7 +547,7 @@ export function Empty({ text }: { text: string }) {
   )
 }
 
-// ─── PageHeader (desktop section heading) ─────────────────────────────────────
+// ─── PageHeader ───────────────────────────────────────────────────────────────
 export function PageHeader({
   title, subtitle, action,
 }: {
@@ -635,10 +573,7 @@ export function PageHeader({
 // ─── SectionLabel ─────────────────────────────────────────────────────────────
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p
-      className="text-[10px] uppercase tracking-wider font-semibold mb-2"
-      style={{ color: 'var(--color-muted)' }}
-    >
+    <p className="text-[10px] uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--color-muted)' }}>
       {children}
     </p>
   )
@@ -654,10 +589,10 @@ export function MetricTile({
   variant?: 'green' | 'gold' | 'default' | 'surface' | 'closing-good' | 'closing-bad'
 }) {
   const styles: Record<string, React.CSSProperties> = {
-    green:         { backgroundColor: 'var(--color-primary-800)', color: '#fff' },
-    gold:          { backgroundColor: 'var(--color-gold-500)', color: '#1a0800' },
-    default:       { backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text)' },
-    surface:       { backgroundColor: 'var(--color-surface-800)', color: 'var(--color-text)' },
+    green:          { backgroundColor: 'var(--color-primary-800)', color: '#fff' },
+    gold:           { backgroundColor: 'var(--color-gold-500)', color: '#1a0800' },
+    default:        { backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text)' },
+    surface:        { backgroundColor: 'var(--color-surface-800)', color: 'var(--color-text)' },
     'closing-good': { backgroundColor: 'var(--color-primary-800)', color: '#fff' },
     'closing-bad':  { backgroundColor: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' },
   }

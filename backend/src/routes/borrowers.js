@@ -50,8 +50,14 @@ router.post('/', async (req, res, next) => {
     const endDate = body.endDate || calcEndDate(body.startDate, Number(body.dueCount), body.frequency)
     const totalPayable = body.totalPayable ?? Number(body.installmentAmount) * Number(body.dueCount)
 
+    // Generate next borrowerCode using the DB sequence (guaranteed unique & atomic)
+    const seqResult = await prisma.$queryRaw`SELECT nextval('borrower_code_seq') AS next_val`
+    const nextVal = Number(seqResult[0].next_val)
+    const borrowerCode = String(nextVal).padStart(2, '0')
+
     const borrower = await prisma.borrower.create({
       data: {
+        borrowerCode,
         name: body.name,
         shopName: body.shopName,
         address: body.address,
