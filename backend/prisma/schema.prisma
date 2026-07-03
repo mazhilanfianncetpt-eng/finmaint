@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  admin
+  collector
+}
+
+enum Frequency {
+  daily
+  weekly
+}
+
+enum PayMode {
+  cash
+  upi
+  bank
+  online
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      Role     @default(collector)
+  createdAt DateTime @default(now())
+}
+
+model Zone {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  borrowers Borrower[]
+}
+
+model Borrower {
+  id                   String    @id @default(cuid())
+  name                 String
+  shopName             String
+  address              String
+  zoneId               String?
+  zone                 Zone?     @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  phone                String
+  amount               Float
+  amountPaidToBorrower Float
+  totalPayable         Float
+  frequency            Frequency
+  startDate            String
+  dueCount             Int
+  endDate              String
+  payMode              PayMode
+  installmentAmount    Float
+  paidInstallments     String[]  @default([])
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model Investor {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String
+  amount      Float
+  payMode     PayMode
+  investedOn  String
+  withdrawnOn String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Settings {
+  id                    String @id @default("settings")
+  initialOpeningBalance Float  @default(0)
+  initialOpeningDate    String
+}
