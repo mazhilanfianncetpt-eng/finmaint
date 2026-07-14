@@ -37,16 +37,15 @@ export function ledgerFor(db: DB, date: string, zoneId: string | null = null): L
   const { settings, borrowers } = db
   const { initialOpeningBalance, initialOpeningDate } = settings
 
-  // Walk from initialOpeningDate to date-1, accumulating (due - received) each day
+  // Walk from initialOpeningDate to date-1, accumulating only received each day
   let opening = initialOpeningBalance
 
   if (date > initialOpeningDate) {
     let cursor = initialOpeningDate
     while (cursor < date) {
       const due = borrowersDueOn(borrowers, cursor, zoneId)
-      const dayDue = due.reduce((s, b) => s + b.installmentAmount, 0)
       const dayRec = due.reduce((s, b) => s + (b.paidInstallments.includes(cursor) ? b.installmentAmount : 0), 0)
-      opening += dayDue - dayRec
+      opening += dayRec
       cursor = addDays(cursor, 1)
     }
   } else {
@@ -58,7 +57,7 @@ export function ledgerFor(db: DB, date: string, zoneId: string | null = null): L
   const paidBorrowers = dueBorrowers.filter(b => b.paidInstallments.includes(date))
   const unpaidBorrowers = dueBorrowers.filter(b => !b.paidInstallments.includes(date))
   const totalReceived = paidBorrowers.reduce((s, b) => s + b.installmentAmount, 0)
-  const closing = opening + (totalCollection - totalReceived)
+  const closing = opening + totalReceived
 
   return { date, zoneId, opening, totalCollection, totalReceived, closing, paidBorrowers, unpaidBorrowers }
 }
