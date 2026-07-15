@@ -242,8 +242,9 @@ export async function deleteBorrower(id: string) {
   setState({ borrowers: _cache.borrowers.filter(b => b.id !== id) })
 }
 
-export async function togglePayment(id: string, date: string) {
-  const updated = await apiBorrowers.togglePayment(id, date)
+// Only this function changes:
+export async function togglePayment(id: string, dueDate: string, paidOn: string) {
+  const updated = await apiBorrowers.togglePayment(id, dueDate, paidOn)
   setState({ borrowers: _cache.borrowers.map(b => (b.id === id ? updated : b)) })
 }
 

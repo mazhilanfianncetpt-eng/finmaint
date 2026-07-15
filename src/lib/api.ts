@@ -1,6 +1,3 @@
-// ─── API client ──────────────────────────────────────────────────────────────
-// Reads VITE_API_URL from .env (e.g. http://localhost:4000/api)
-
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:4000/api'
 
 let _token: string | null = localStorage.getItem('finmaint.token')
@@ -38,14 +35,12 @@ async function req<T>(
   return data as T
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
 export const apiAuth = {
   login: (username: string, password: string) =>
     req<{ token: string; user: ApiUser }>('/auth/login', { method: 'POST', body: { username, password } }),
   me: () => req<ApiUser>('/auth/me'),
 }
 
-// ─── Zones ────────────────────────────────────────────────────────────────────
 export const apiZones = {
   list: () => req<ApiZone[]>('/zones'),
   create: (name: string) => req<ApiZone>('/zones', { method: 'POST', body: { name } }),
@@ -53,7 +48,6 @@ export const apiZones = {
   delete: (id: string) => req<{ ok: boolean }>(`/zones/${id}`, { method: 'DELETE' }),
 }
 
-// ─── Borrowers ────────────────────────────────────────────────────────────────
 export const apiBorrowers = {
   list: (zoneId?: string | null) =>
     req<ApiBorrower[]>(`/borrowers${zoneId ? `?zoneId=${zoneId}` : ''}`),
@@ -63,11 +57,11 @@ export const apiBorrowers = {
   update: (id: string, body: Partial<ApiBorrower>) =>
     req<ApiBorrower>(`/borrowers/${id}`, { method: 'PUT', body }),
   delete: (id: string) => req<{ ok: boolean }>(`/borrowers/${id}`, { method: 'DELETE' }),
-  togglePayment: (id: string, date: string) =>
-    req<ApiBorrower>(`/borrowers/${id}/toggle-payment`, { method: 'POST', body: { date } }),
+  // Now accepts dueDate + paidOn separately
+  togglePayment: (id: string, dueDate: string, paidOn: string) =>
+    req<ApiBorrower>(`/borrowers/${id}/toggle-payment`, { method: 'POST', body: { dueDate, paidOn } }),
 }
 
-// ─── Investors ────────────────────────────────────────────────────────────────
 export const apiInvestors = {
   list: () => req<ApiInvestor[]>('/investors'),
   create: (body: Omit<ApiInvestor, 'id' | 'createdAt' | 'updatedAt'>) =>
@@ -77,13 +71,11 @@ export const apiInvestors = {
   delete: (id: string) => req<{ ok: boolean }>(`/investors/${id}`, { method: 'DELETE' }),
 }
 
-// ─── Settings ─────────────────────────────────────────────────────────────────
 export const apiSettings = {
   get: () => req<ApiSettings>('/settings'),
   update: (body: Partial<ApiSettings>) => req<ApiSettings>('/settings', { method: 'PUT', body }),
 }
 
-// ─── Ledger ───────────────────────────────────────────────────────────────────
 export const apiLedger = {
   get: (date: string, zoneId?: string | null) =>
     req<ApiLedger>(`/ledger?date=${date}${zoneId ? `&zoneId=${zoneId}` : ''}`),
@@ -91,7 +83,6 @@ export const apiLedger = {
     req<ApiPreviewDay[]>(`/ledger/preview?fromDate=${fromDate}&days=${days}`),
 }
 
-// ─── API types ────────────────────────────────────────────────────────────────
 export interface ApiUser {
   id: string
   username: string
@@ -103,6 +94,12 @@ export interface ApiZone {
   id: string
   name: string
   createdAt: string
+}
+
+// Payment entry — replaces flat paidInstallments[]
+export interface Payment {
+  dueDate: string
+  paidOn: string
 }
 
 export interface ApiBorrower {
@@ -122,8 +119,7 @@ export interface ApiBorrower {
   endDate: string
   payMode: 'cash' | 'upi' | 'bank' | 'online'
   installmentAmount: number
-  paidInstallments: string[]
-  // computed by backend
+  payments: Payment[]
   nextDueDate?: string | null
   overdueCount?: number
   createdAt?: string

@@ -12,21 +12,18 @@ export const Route = createFileRoute('/lender/collection')({
   component: CollectionPage,
 })
 
-/** Returns "3rd" / "14th" etc. for installment number labels */
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd']
   const v = n % 100
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-/** Which installment number (1-based) is due on `date` for borrower `b` */
 function installmentNumberFor(b: Borrower, date: string): number {
   const dates = dueDatesFor(b)
   const idx = dates.indexOf(date)
   return idx === -1 ? 0 : idx + 1
 }
 
-// Coloured metric tile (same as dashboard)
 function MetricTile({ label, value, variant = 'default' }: {
   label: string; value: string; variant?: 'green' | 'gold' | 'default' | 'closing-good' | 'closing-bad'
 }) {
@@ -76,28 +73,25 @@ function CollectionPage() {
   const today = todayISO()
   const zoneName = zoneId ? zones.find(z => z.id === zoneId)?.name ?? null : null
 
-  // ── Previous pending: borrowers with overdue unpaid installments (any date filter) ──
   const overdueBorrowers = db.borrowers
     .filter(b => {
       if (zoneId && b.zoneId !== zoneId) return false
       const dates = dueDatesFor(b)
-      return dates.some(d => d < today && !b.paidInstallments.includes(d))
+      return dates.some(d => d < today && !b.payments.some(p => p.dueDate === d))
     })
     .map(b => {
       const dates = dueDatesFor(b)
-      const overdueDates = dates.filter(d => d < today && !b.paidInstallments.includes(d))
+      const overdueDates = dates.filter(d => d < today && !b.payments.some(p => p.dueDate === d))
       const overdueAmt = overdueDates.length * b.installmentAmount
       return { b, overdueDates, overdueAmt }
     })
 
-  // Toggle paid for any borrower/date combo — no date restriction (multi check-in enabled)
-  function togglePaid(borrowerId: string, d: string, _wasPaid: boolean) {
-    togglePayment(borrowerId, d).catch(() => {})
+  function togglePaid(borrowerId: string, dueDate: string) {
+    togglePayment(borrowerId, dueDate, today).catch(() => {})
   }
 
-  // Check-in for one specific overdue date on a borrower (marks that installment as paid)
-  function checkInOverdue(borrowerId: string, overdueDate: string) {
-    togglePayment(borrowerId, overdueDate).catch(() => {})
+  async function checkInOverdue(borrowerId: string, overdueDate: string) {
+    await togglePayment(borrowerId, overdueDate, today).catch(() => {})
   }
 
   function handlePreview() {
@@ -118,7 +112,6 @@ function CollectionPage() {
     setObAmount('0'); setObDate(todayISO()); setObPreview(null); setObConfirm(false)
   }
 
-  // Borrower row with installment # and frequency tags — always editable, no date lock
   function BorrowerRow({ b, paid }: { b: Borrower; paid: boolean }) {
     const instNo = installmentNumberFor(b, date)
     return (
@@ -132,7 +125,7 @@ function CollectionPage() {
         <input
           type="checkbox"
           checked={paid}
-          onChange={() => togglePaid(b.id, date, paid)}
+          onChange={() => togglePaid(b.id, date)}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
@@ -199,12 +192,12 @@ function CollectionPage() {
           )}
         </div>
 
-        {/* Ledger tiles — coloured */}
+        {/* Ledger tiles */}
         <div className="grid grid-cols-2 gap-2">
-          <MetricTile label="Opening" value={inr(ledger.opening)} variant="default" />
-          <MetricTile label="Due"     value={inr(ledger.totalCollection)} variant="default" />
-          <MetricTile label="Received" value={inr(ledger.totalReceived)} variant="gold" />
-          <MetricTile label="Closing"  value={inr(ledger.closing)} variant={ledger.closing < 0 ? 'closing-bad' : 'closing-good'} />
+          <MetricTile label="Opening"  value={inr(ledger.opening)}         variant="default" />
+          <MetricTile label="Due"      value={inr(ledger.totalCollection)} variant="default" />
+          <MetricTile label="Received" value={inr(ledger.totalReceived)}   variant="gold" />
+          <MetricTile label="Closing"  value={inr(ledger.closing)}         variant={ledger.closing < 0 ? 'closing-bad' : 'closing-good'} />
         </div>
 
         {/* Action buttons */}
@@ -215,14 +208,10 @@ function CollectionPage() {
           <Btn size="sm" variant="secondary" onClick={() => exportLedgerPDF(ledger, zoneName)}>
             <FileText size={13} /> PDF
           </Btn>
-          <Btn size="sm" variant="ghost" onClick={() => {
-            exportMonthlyCSV(db, date, zoneId, zoneName)
-          }}>
+          <Btn size="sm" variant="ghost" onClick={() => exportMonthlyCSV(db, date, zoneId, zoneName)}>
             <CalendarDays size={13} /> Monthly Report (CSV)
           </Btn>
-          <Btn size="sm" variant="ghost" onClick={() => {
-            exportMonthlyPDF(db, date, zoneId, zoneName)
-          }}>
+          <Btn size="sm" variant="ghost" onClick={() => exportMonthlyPDF(db, date, zoneId, zoneName)}>
             <CalendarDays size={13} /> Monthly Report (PDF)
           </Btn>
           {isAdmin && (
@@ -232,7 +221,7 @@ function CollectionPage() {
           )}
         </div>
 
-        {/* ── PREVIOUS PENDING — independent of date, with check-in ── */}
+        {/* Previous Pending */}
         {overdueBorrowers.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-2 px-3 py-2 rounded-xl"
@@ -258,8 +247,6 @@ function CollectionPage() {
                       <p className="text-[10px]" style={{ color: 'var(--color-danger-400)' }}>{overdueDates.length} missed</p>
                     </div>
                   </div>
-
-                  {/* Individual overdue dates with checkbox + installment tag */}
                   <div className="flex flex-col gap-1.5">
                     {overdueDates.map(d => {
                       const instNo = installmentNumberFor(b, d)
@@ -287,7 +274,7 @@ function CollectionPage() {
           </section>
         )}
 
-        {/* Due borrowers on selected date — fully editable, multi check-in */}
+        {/* Due borrowers on selected date */}
         {(ledger.paidBorrowers.length > 0 || ledger.unpaidBorrowers.length > 0) && (
           <div>
             <p className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: 'var(--color-muted)' }}>

@@ -22,7 +22,7 @@ function Dashboard() {
   const zones = db.settings.zones
 
   const totalInvested     = db.investors.filter(i => !i.withdrawnOn).reduce((s, i) => s + i.amount, 0)
-  const totalReceived     = db.borrowers.reduce((s, b) => s + b.paidInstallments.length * b.installmentAmount, 0)
+  const totalReceived     = db.borrowers.reduce((s, b) => s + b.payments.length * b.installmentAmount, 0)
   const totalIssued       = db.borrowers.reduce((s, b) => s + b.amountPaidToBorrower, 0)
   const activeBorrowers   = db.borrowers.length
   const totalYetToReceive = Math.max(0, totalIssued - totalReceived)
@@ -299,7 +299,7 @@ const BorrowerStatusPanel = memo(function BorrowerStatusPanel({
   onClose: () => void
 }) {
   const history   = paymentHistory(b)
-  const paid      = b.paidInstallments.length
+  const paid      = b.payments.length
   const remaining = Math.max(0, b.amount - paid * b.installmentAmount)
   const zone      = zones.find(z => z.id === b.zoneId)
   const overdue   = overdueCount(b)
@@ -382,7 +382,7 @@ const BorrowerStatusPanel = memo(function BorrowerStatusPanel({
           <div key={row.date} className="flex justify-between text-xs py-0.5">
             <span style={{ color: 'var(--color-muted)' }}>{fmtDate(row.date)}</span>
             <span style={{ color: row.paid ? 'var(--color-primary-500)' : 'var(--color-danger-400)' }}>
-              {row.paid ? `Paid ${inr(row.amountPaid)}` : 'Unpaid'}
+              {row.paid ? `Paid ${inr(row.amountPaid)}${row.paidOn !== row.date ? ` (${fmtDate(row.paidOn!)})` : ''}` : 'Unpaid'}
             </span>
           </div>
         ))}

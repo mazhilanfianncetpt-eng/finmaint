@@ -119,7 +119,8 @@ function BorrowersPage() {
               const next     = nextDueDate(b)
               const overdue  = overdueCount(b)
               const zone     = zones.find(z => z.id === b.zoneId)
-              const progress = Math.round((b.paidInstallments.length / b.dueCount) * 100)
+              const paidCount = (b.payments ?? []).length
+              const progress = Math.round((paidCount / b.dueCount) * 100)
               return (
                 <Link
                   key={b.id}
@@ -173,7 +174,7 @@ function BorrowersPage() {
                     />
                   </div>
                   <p className="text-[10px] mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                    {b.paidInstallments.length}/{b.dueCount} paid
+                    {paidCount}/{b.dueCount} paid
                   </p>
                 </Link>
               )
@@ -234,7 +235,7 @@ function AddBorrowerForm({ onClose }: { onClose: () => void }) {
         endDate,
         payMode,
         installmentAmount,
-        paidInstallments: [],
+        payments: [],
       })
       onClose()
     } catch (e) {

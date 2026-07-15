@@ -38,15 +38,15 @@ function BorrowerHistoryPage() {
   }
 
   const history   = paymentHistory(b)
-  const paidTotal = b.paidInstallments.length * b.installmentAmount
+  const paidTotal = b.payments.length * b.installmentAmount
   const remaining = Math.max(0, b.amount - paidTotal)
   const overdue   = overdueCount(b)
   const next      = nextDueDate(b)
   const zone      = db.settings.zones.find(z => z.id === b.zoneId)
-  const progress  = Math.round((b.paidInstallments.length / b.dueCount) * 100)
+  const progress  = Math.round((b.payments.length / b.dueCount) * 100)
 
-  function togglePaid(date: string, _wasPaid: boolean) {
-    togglePayment(id, date).catch(() => {})
+  function togglePaid(dueDate: string) {
+    togglePayment(id, dueDate, today).catch(() => {})
   }
 
   async function handleDelete() {
@@ -174,7 +174,7 @@ function BorrowerHistoryPage() {
         {/* Progress */}
         <div>
           <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
-            <span>{b.paidInstallments.length}/{b.dueCount} installments</span>
+            <span>{b.payments.length}/{b.dueCount} installments</span>
             <span>{progress}%</span>
           </div>
           <div className="h-2 rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
@@ -212,7 +212,7 @@ function BorrowerHistoryPage() {
             className="rounded-2xl overflow-hidden table-scroll"
             style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}
           >
-            <table className="w-full text-xs" style={{ minWidth: '340px' }}>
+            <table className="w-full text-xs" style={{ minWidth: '400px' }}>
               <thead>
                 <tr
                   style={{
@@ -221,7 +221,8 @@ function BorrowerHistoryPage() {
                   }}
                 >
                   <th className="text-left px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>#</th>
-                  <th className="text-left px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Date</th>
+                  <th className="text-left px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Due Date</th>
+                  <th className="text-left px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Paid On</th>
                   <th className="text-center px-2 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Paid</th>
                   <th className="text-right px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Amount</th>
                   <th className="text-right px-3 py-2.5 font-medium" style={{ color: 'var(--color-muted)' }}>Balance</th>
@@ -233,6 +234,8 @@ function BorrowerHistoryPage() {
                   const isPast    = row.date < today
                   const isFuture  = row.date > today
                   const isOverdue = isPast && !row.paid
+                  const isLate    = row.paid && row.paidOn !== null && row.paidOn > row.date
+                  const isEarly   = row.paid && row.paidOn !== null && row.paidOn < row.date
 
                   return (
                     <tr
@@ -262,11 +265,36 @@ function BorrowerHistoryPage() {
                           </span>
                         )}
                       </td>
+                      <td className="px-3 py-2.5">
+                        {row.paidOn ? (
+                          <span style={{ color: isLate ? '#f59e0b' : isEarly ? 'var(--color-primary-400)' : 'var(--color-primary-500)' }}>
+                            {fmtDate(row.paidOn)}
+                            {isLate && (
+                              <span
+                                className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}
+                              >
+                                Late
+                              </span>
+                            )}
+                            {isEarly && (
+                              <span
+                                className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ backgroundColor: 'rgba(16,185,129,0.15)', color: 'var(--color-primary-400)' }}
+                              >
+                                Early
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--color-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td className="text-center px-2 py-2.5">
                         <input
                           type="checkbox"
                           checked={row.paid}
-                          onChange={() => togglePaid(row.date, row.paid)}
+                          onChange={() => togglePaid(row.date)}
                           aria-label={`Mark installment ${i + 1} as ${row.paid ? 'unpaid' : 'paid'}`}
                         />
                       </td>
@@ -342,10 +370,10 @@ function EditBorrowerForm({ b, onClose }: { b: ReturnType<typeof useDBSnap>['bor
   const [error, setError]         = useState('')
   const [saving, setSaving]       = useState(false)
 
-  const amountNum       = parseFloat(amount) || 0
-  const dueCountNum     = parseInt(dueCount) || 1
+  const amountNum         = parseFloat(amount) || 0
+  const dueCountNum       = parseInt(dueCount) || 1
   const installmentAmount = amountNum > 0 ? Math.ceil(amountNum / dueCountNum) : 0
-  const endDate         = calcEndDate(startDate, dueCountNum, frequency)
+  const endDate           = calcEndDate(startDate, dueCountNum, frequency)
 
   async function handleSave() {
     if (!name.trim() || !amount || !dueCount) {
