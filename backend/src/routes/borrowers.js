@@ -101,13 +101,18 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     await prisma.borrower.delete({ where: { id: req.params.id } })
+
+    // Reset sequence to max remaining borrowerCode so next insert continues from there
+    const result = await prisma.borrower.aggregate({ _max: { borrowerCode: true } })
+    const maxCode = result._max.borrowerCode ? Number(result._max.borrowerCode) : 0
+    await prisma.$executeRaw`SELECT setval('borrower_code_seq', ${maxCode})`
+
     res.json({ ok: true })
   } catch (err) {
     next(err)
   }
 })
 
-// Toggle a specific due date as paid/unpaid — this is the "collection" action
 router.post('/:id/toggle-payment', async (req, res, next) => {
   try {
     const { date } = req.body || {}

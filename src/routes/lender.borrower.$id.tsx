@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useDBSnap, togglePayment, deleteBorrower } from '../lib/store'
-import { AppHeader, ConfirmDialog } from '../components/ui'
-import { paymentHistory, nextDueDate, overdueCount } from '../lib/logic'
+import { useDBSnap, togglePayment, deleteBorrower, updateBorrower } from '../lib/store'
+import type { PayMode, Frequency } from '../lib/store'
+import { AppHeader, ConfirmDialog, Sheet, Label, Select, Btn } from '../components/ui'
+import { paymentHistory, nextDueDate, overdueCount, calcEndDate } from '../lib/logic'
 import { inr, fmtDate, todayISO } from '../lib/format'
-import { ChevronLeft, Trash2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil } from 'lucide-react'
 
 export const Route = createFileRoute('/lender/borrower/$id')({
   component: BorrowerHistoryPage,
@@ -17,6 +18,7 @@ function BorrowerHistoryPage() {
   const b = db.borrowers.find(b => b.id === id)
   const today = todayISO()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
 
   if (!b) {
     return (
@@ -63,7 +65,7 @@ function BorrowerHistoryPage() {
       </div>
 
       <div className="page-pad flex flex-col gap-4">
-        {/* Back + Delete row */}
+        {/* Back + Edit + Delete row */}
         <div className="flex items-center justify-between">
           <Link
             to="/lender/borrowers"
@@ -73,14 +75,24 @@ function BorrowerHistoryPage() {
           >
             <ChevronLeft size={14} aria-hidden="true" /> All Borrowers
           </Link>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-fast"
-            style={{ color: '#ef4444', border: '1px solid #ef444440', backgroundColor: '#ef444412' }}
-            aria-label={`Delete ${b.name}`}
-          >
-            <Trash2 size={13} aria-hidden="true" /> Delete
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowEdit(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-fast"
+              style={{ color: 'var(--color-primary-500)', border: '1px solid var(--color-primary-700)', backgroundColor: 'rgba(16,185,129,0.08)' }}
+              aria-label={`Edit ${b.name}`}
+            >
+              <Pencil size={13} aria-hidden="true" /> Edit
+            </button>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-fast"
+              style={{ color: '#ef4444', border: '1px solid #ef444440', backgroundColor: '#ef444412' }}
+              aria-label={`Delete ${b.name}`}
+            >
+              <Trash2 size={13} aria-hidden="true" /> Delete
+            </button>
+          </div>
         </div>
 
         {/* Desktop title */}
@@ -291,6 +303,11 @@ function BorrowerHistoryPage() {
         </section>
       </div>
 
+      {/* Edit sheet */}
+      <Sheet open={showEdit} onClose={() => setShowEdit(false)} title="Edit Borrower">
+        <EditBorrowerForm b={b} onClose={() => setShowEdit(false)} />
+      </Sheet>
+
       {/* Delete confirmation dialog */}
       <ConfirmDialog
         open={confirmDelete}
@@ -302,6 +319,175 @@ function BorrowerHistoryPage() {
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}
       />
+    </div>
+  )
+}
+
+// ─── EditBorrowerForm ─────────────────────────────────────────────────────────
+function EditBorrowerForm({ b, onClose }: { b: ReturnType<typeof useDBSnap>['borrowers'][0]; onClose: () => void }) {
+  const db    = useDBSnap()
+  const zones = db.settings.zones
+
+  const [name, setName]         = useState(b.name)
+  const [shopName, setShopName] = useState(b.shopName)
+  const [address, setAddress]   = useState(b.address)
+  const [zoneId, setZoneId]     = useState<string>(b.zoneId ?? '')
+  const [phone, setPhone]       = useState(b.phone)
+  const [amount, setAmount]     = useState(String(b.amount))
+  const [amountPaidToBorrower, setAmountPaidToBorrower] = useState(String(b.amountPaidToBorrower))
+  const [frequency, setFrequency] = useState<Frequency>(b.frequency)
+  const [startDate, setStartDate] = useState(b.startDate)
+  const [dueCount, setDueCount]   = useState(String(b.dueCount))
+  const [payMode, setPayMode]     = useState<PayMode>(b.payMode)
+  const [error, setError]         = useState('')
+  const [saving, setSaving]       = useState(false)
+
+  const amountNum       = parseFloat(amount) || 0
+  const dueCountNum     = parseInt(dueCount) || 1
+  const installmentAmount = amountNum > 0 ? Math.ceil(amountNum / dueCountNum) : 0
+  const endDate         = calcEndDate(startDate, dueCountNum, frequency)
+
+  async function handleSave() {
+    if (!name.trim() || !amount || !dueCount) {
+      setError('Name, amount, and number of installments are required.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      await updateBorrower(b.id, {
+        name: name.trim(),
+        shopName: shopName.trim(),
+        address: address.trim(),
+        zoneId: zoneId || null,
+        phone: phone.trim(),
+        amount: amountNum,
+        amountPaidToBorrower: parseFloat(amountPaidToBorrower) || 0,
+        totalPayable: installmentAmount * dueCountNum,
+        frequency,
+        startDate,
+        dueCount: dueCountNum,
+        endDate,
+        payMode,
+        installmentAmount,
+      })
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save changes.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const fieldStyle: React.CSSProperties = {
+    backgroundColor: 'var(--color-surface-800)',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text)',
+    width: '100%',
+    borderRadius: '12px',
+    padding: '10px 12px',
+    fontSize: '14px',
+    outline: 'none',
+  }
+
+  return (
+    <div className="flex flex-col gap-3 pb-2">
+      {error && (
+        <p className="text-xs px-3 py-2 rounded-xl" role="alert" style={{ color: '#f87171', backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+          {error}
+        </p>
+      )}
+
+      <div><Label>Full Name *</Label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ramesh Kumar" style={fieldStyle} autoComplete="name" />
+      </div>
+      <div><Label>Shop Name</Label>
+        <input value={shopName} onChange={e => setShopName(e.target.value)} placeholder="Ramesh General Store" style={fieldStyle} />
+      </div>
+      <div><Label>Address</Label>
+        <input value={address} onChange={e => setAddress(e.target.value)} placeholder="123 MG Road, Bangalore" style={fieldStyle} />
+      </div>
+      <div>
+        <Label>Zone</Label>
+        <Select value={zoneId} onChange={e => setZoneId(e.target.value)}>
+          <option value="">No zone</option>
+          {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+        </Select>
+      </div>
+      <div><Label>Phone</Label>
+        <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="9876543210" style={fieldStyle} autoComplete="tel" />
+      </div>
+      <div><Label>Principal Amount (₹) *</Label>
+        <input
+          inputMode="numeric"
+          value={amount}
+          onChange={e => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder="10000"
+          style={fieldStyle}
+        />
+      </div>
+      <div><Label>Amount Paid to Borrower (₹)</Label>
+        <input
+          inputMode="numeric"
+          value={amountPaidToBorrower}
+          onChange={e => setAmountPaidToBorrower(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder="0"
+          style={fieldStyle}
+        />
+      </div>
+      <div>
+        <Label>Frequency *</Label>
+        <Select value={frequency} onChange={e => setFrequency(e.target.value as Frequency)}>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </Select>
+      </div>
+      <div><Label>Start Date *</Label>
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={fieldStyle} />
+      </div>
+      <div><Label>Number of Installments *</Label>
+        <input
+          inputMode="numeric"
+          value={dueCount}
+          onChange={e => setDueCount(e.target.value.replace(/[^0-9]/g, ''))}
+          placeholder="20"
+          style={fieldStyle}
+        />
+      </div>
+      <div>
+        <Label>Pay Mode</Label>
+        <Select value={payMode} onChange={e => setPayMode(e.target.value as PayMode)}>
+          <option value="cash">Cash</option>
+          <option value="upi">UPI</option>
+          <option value="bank">Bank</option>
+          <option value="online">Online</option>
+        </Select>
+      </div>
+
+      {amountNum > 0 && dueCountNum > 0 && (
+        <div
+          className="rounded-xl px-4 py-3 flex flex-col gap-2"
+          style={{ backgroundColor: 'var(--color-surface-800)', border: '1px solid var(--color-border)' }}
+          aria-label="Loan summary"
+        >
+          <div className="flex justify-between text-sm">
+            <span style={{ color: 'var(--color-muted)' }}>Installment</span>
+            <span className="num font-semibold" style={{ color: 'var(--color-primary-500)' }}>{inr(installmentAmount)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span style={{ color: 'var(--color-muted)' }}>End date</span>
+            <span style={{ color: 'var(--color-text-soft)' }}>{fmtDate(endDate)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span style={{ color: 'var(--color-muted)' }}>Total payable</span>
+            <span className="num" style={{ color: 'var(--color-text-soft)' }}>{inr(installmentAmount * dueCountNum)}</span>
+          </div>
+        </div>
+      )}
+
+      <Btn onClick={handleSave} className="w-full mt-1" disabled={saving}>
+        {saving ? 'Saving…' : 'Save Changes'}
+      </Btn>
     </div>
   )
 }
